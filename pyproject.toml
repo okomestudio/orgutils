@@ -20,7 +20,10 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Topic :: Utilities",
 ]
-dependencies = ["pdfminer.six"]
+dependencies = [
+    "pdfminer.six",
+    "orgparse",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -45,6 +48,7 @@ test = [
 
 [project.scripts]
 orgutils = "orgutils.__main__:main"
+org-kindle-exporter = "orgutils.kindle.__main__:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
