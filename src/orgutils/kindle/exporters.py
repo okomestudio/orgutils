@@ -8,7 +8,7 @@ TODO: Rewrite in Emacs Lisp.
 import json
 import re
 
-import orgparse
+from ..org import structs
 
 
 def preprocess_ja(text):
@@ -21,46 +21,8 @@ def preprocess_ja(text):
     return text
 
 
-def render_header(org, item, depth):
-    org.append("*" * depth + " " + item["text"])
-    org.append(":PROPERTIES:")
-    org.append(f":KINDLE_LOC: { item['location']['value'] }")
-    org.append(":END:")
-    org.append("")
-
-
-def render_note(org, item):
-    org.append("#+BEGIN_QUOTE")
-    org.append(f"{ item['text'] } (loc. { item['location']['value'] })")
-    org.append("#+END_QUOTE")
-    org.append("")
-
-    note = item.get("note")
-    if note:
-        org.append(note)
-        org.append("")
-
-
-def export_to_org(highlights, lang, target_file, target_heading):
-    with open(highlights) as f:
-        jd = json.load(f)
-
-    if lang == "ja":
-        preprocess = preprocess_ja
-    else:
-        preprocess = lambda s: s
-
-    title = preprocess(jd["title"])
-    authors = jd["authors"]
-    asin = jd["asin"]
-    highlights = jd["highlights"]
-    for item in highlights:
-        item["text"] = preprocess(item["text"])
-        item["note"] = preprocess(item["note"])
-
-    sorted_items = [(x["location"]["value"], x) for x in highlights]
-
-    base_heading_depth = 1
+def _inspect_target_file(target_file):
+    # TODO: This is not implemented
     if target_file:
         with open(target_file):
             root = orgparse.load(f)
@@ -94,24 +56,62 @@ def export_to_org(highlights, lang, target_file, target_heading):
         if target:
             push_headers_to(sorted_items, target)
 
+
+def export_to_org(highlights, lang):
+    with open(highlights) as f:
+        jd = json.load(f)
+
+    if lang == "ja":
+        preprocess = preprocess_ja
+    else:
+        preprocess = lambda s: s
+
+    title = preprocess(jd["title"])
+    authors = jd["authors"]
+    asin = jd["asin"]
+    highlights = jd["highlights"]
+    for item in highlights:
+        item["text"] = preprocess(item["text"])
+        item["note"] = preprocess(item["note"])
+
+    sorted_items = [(x["location"]["value"], x) for x in highlights]
+
+    base_heading_depth = 1
     sorted_items = sorted(sorted_items, key=lambda tpl: (tpl[0], tpl[1]["text"]))
 
-    # start rendering
+    # build org tree
     org = []
-    org.append(f"* { title }")
-    org.append(":PROPERTIES:")
-    org.append(f":AUTHOR: { authors }")
-    org.append(f":ASIN: { asin }")
-    org.append(f":END:")
-    org.append("")
+    org.append(
+        structs.Heading(
+            title,
+            1,
+            {
+                "author": authors,
+                "asin": asin,
+            },
+        )
+    )
 
     for loc, item in sorted_items:
         m = re.match(r"^[hH](\d+)$", item.get("note") or "")
         if m:
             heading_depth = int(m.group(1))
-            render_header(org, item, heading_depth + base_heading_depth)
+            org.append(
+                structs.Heading(
+                    item["text"],
+                    heading_depth + base_heading_depth,
+                    {"kindle_loc": item["location"]["value"]},
+                )
+            )
             continue
 
-        render_note(org, item)
+        org.append(
+            structs.QuoteBlock(f"{ item['text'] } (loc. { item['location']['value'] })")
+        )
+        if item.get("note"):
+            org.append(structs.Paragraph(item["note"]))
 
-    print("\n".join(org))
+    # render org doc
+    for i in org:
+        print("\n".join(i.render()))
+        print()
