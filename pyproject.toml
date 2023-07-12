@@ -47,8 +47,8 @@ test = [
 "Buck Tracker" = "https://github.com/okomestudio/orgutils/issues"
 
 [project.scripts]
-orgutils = "orgutils.__main__:main"
 org-kindle-exporter = "orgutils.kindle.__main__:cli"
+org-zotero-exporter = "orgutils.zotero.__main__:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -53,3 +53,14 @@ class QuoteBlock(Block):  # noqa
         lines.append(self.content)
         lines.append("#+END_QUOTE")
         return lines
+
+
+@dataclass
+class Group(OrgObject):  # noqa
+    objects: List[OrgObject]
+
+    def render(self) -> List[str]:  # noqa
+        lines = []
+        for obj in self.objects:
+            lines.append(obj.render())
+        return lines
