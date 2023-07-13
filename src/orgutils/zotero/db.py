@@ -26,8 +26,8 @@ def connect(zotero_data_dir: str = None) -> sqlite3.Connection:
 
 SQL_LIST_ITEMS: str = """
 SELECT
-    parentItemID AS itemID,
-    COUNT(*) AS num_annotations,
+    parentItemID AS id,
+    COUNT(*) AS annotationCount,
     itemDataValues.value AS filename
 FROM itemAnnotations annotations
     LEFT JOIN items parents ON parents.itemID = annotations.parentItemID
@@ -35,6 +35,17 @@ FROM itemAnnotations annotations
     LEFT JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
 GROUP BY parentItemID;
 """
+
+
+def get_item_list(zotero_data_dir=None) -> List:
+    zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
+
+    conn = connect(zotero_data_dir)
+    cur = conn.cursor()
+    cur.execute(SQL_LIST_ITEMS)
+    rows = cur.fetchall()
+
+    return rows
 
 
 SQL_GET_FILENAME_FOR_ID: str = """

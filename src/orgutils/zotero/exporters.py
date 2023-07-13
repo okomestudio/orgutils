@@ -10,12 +10,10 @@ from ..utils import remove_extra_whitespaces
 
 
 def list_items():  # noqa
-    conn = db.connect()
-    cur = conn.cursor()
-    cur.execute(db.SQL_LIST_ITEMS)
-    rows = cur.fetchall()
-    print(("ID", "Annotation Count", "File"))
-    print(rows)
+    rows = db.get_item_list()
+    print("\t".join(["ID", "Annotation Count", "File"]))
+    for row in rows:
+        print(f"{ row['id'] }\t{ row['annotationCount'] }\t\"{ row['filename'] }\"")
 
 
 def export_to_org(id):  # noqa
