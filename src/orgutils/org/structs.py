@@ -62,5 +62,12 @@ class Group(OrgObject):  # noqa
     def render(self) -> List[str]:  # noqa
         lines = []
         for obj in self.objects:
-            lines.append(obj.render())
+            lines.extend(obj.render())
         return lines
+
+
+def dumps(org_objects: List[OrgObject]) -> str:  # noqa
+    lines = []
+    for org_object in org_objects:
+        lines.extend(org_object.render() + [""])
+    return "\n".join(lines)

@@ -1,11 +1,12 @@
 """Zotero exporters."""
 import subprocess
-import xml.dom.minidom
 from collections import namedtuple
+from typing import List
 from xml.etree import ElementTree as ET
 
 from ..org import structs
 from . import db
+from ..utils import remove_extra_whitespaces
 
 
 def list_items():  # noqa
@@ -17,43 +18,53 @@ def list_items():  # noqa
     print(rows)
 
 
-def _pretty_xml(tree):
-    dom = xml.dom.minidom.parseString(ET.tostring(tree))
-    return dom.toprettyxml(indent=" " * 2)
-
-
 def export_to_org(id):  # noqa
     filename = db.get_filename_for_id(id)
 
+    Item = namedtuple("Item", ("loc", "object"))
+    items: List[Item] = []
+
+    # Get document outline (table of contents).
     outline_xml = subprocess.check_output(["dumppdf.py", "-T", filename])
-    elmt = ET.fromstring(outline_xml)
-
-    Item = namedtuple("Item", ("page", "object"))
-
-    items = []
-    for elmt in elmt.findall(".//outline[@title]"):
+    for elmt in ET.fromstring(outline_xml).findall(".//outline[@title]"):
         page = int(elmt.find("pageno").text)
-        obj = structs.Heading(elmt.get("title"), int(elmt.get("level")), {"page": page})
-        items.append(Item(page, obj))
+        numbers = elmt.findall(".//number")
+        x = float(numbers[0].text)
+        y = float(numbers[1].text)
+        title = elmt.get("title")
+        level = int(elmt.get("level"))
 
+        obj = structs.Heading(
+            title,
+            level,
+            {"page": page, "pos_x": x, "pos_y": y},
+        )
+        items.append(Item((page, -y, x), obj))
+
+    # Get annotations.
     for row in db.get_annotations_for_id(id):
-        page = int(row[0])
-        text = row[1]
-        comment = row[2]
+        page = row["page"]
+        rects = row["position"].get("rects")
+        if rects:
+            first = rects[0]
+            x, y = float(first[0]), float(first[-1])
+        else:
+            x, y = None, None
+        text = row["text"]
+        comment = row["comment"]
 
         objs = []
         if text:
-            objs.append(structs.QuoteBlock(text + f" (p. { page })"))
+            objs.append(
+                structs.QuoteBlock(remove_extra_whitespaces(text) + f" (p. { page })")
+            )
         if comment:
             objs.append(structs.Paragraph(comment + f" (p. { page })"))
         if objs:
-            if len(objs) > 1:
-                items.append((page, structs.Group(objs)))
-            else:
-                items.append((page, objs[0]))
+            items.append(Item((page, -y, x), structs.Group(objs)))
 
-    items = sorted(items, key=lambda o: o[0])
-
-    for page, item in items:
-        print("\n".join(item.render()))
-        print()
+    print(
+        structs.dumps(
+            (item.object for item in sorted(items, key=lambda item: item.loc))
+        )
+    )

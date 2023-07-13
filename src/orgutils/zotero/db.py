@@ -1,13 +1,26 @@
 """Zotero database (sqlite)."""
+import functools
+import json
 import sqlite3
 from pathlib import Path
-
-ZOTERO_DIR = Path("~/.local/var/zotero").expanduser()
-ZOTERO_DB = ZOTERO_DIR / "zotero.sqlite"
+from typing import List
 
 
-def connect():  # noqa
-    conn = sqlite3.connect(ZOTERO_DB)
+@functools.cache
+def _find_zotero_data_dir(path: str = None) -> Path:
+    paths = [path] if path else []
+    paths.extend([Path("~") / "Zotero", Path("~") / ".local" / "var" / "zotero"])
+    for path in paths:
+        path = Path(path).expanduser()
+        if (path / "zotero.sqlite").exists():
+            return path
+
+
+def connect(zotero_data_dir: str = None) -> sqlite3.Connection:
+    """Get SQLite connection."""
+    zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
+    conn = sqlite3.connect(zotero_data_dir / "zotero.sqlite")
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -38,21 +51,23 @@ GROUP BY parentItemID;
 """
 
 
-def get_filename_for_id(id):  # noqa
-    conn = connect()
+def get_filename_for_id(id, zotero_data_dir=None) -> Path:  # noqa
+    zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
+
+    conn = connect(zotero_data_dir)
     cur = conn.cursor()
     cur.execute(SQL_GET_FILENAME_FOR_ID, (id,))
     row = cur.fetchone()
-    if row is None:
+    if not row:
         raise ValueError("Item for ID does not exist")
 
-    path = ZOTERO_DIR / "storage" / row[1] / row[2]
-    return path
+    return zotero_data_dir / "storage" / row[1] / row[2]
 
 
 SQL_GET_ANNOTATIONS_FOR_ID = """
 SELECT
-    pageLabel,
+    CAST(pageLabel AS INTEGER) AS page,
+    position,
     text,
     comment
 FROM itemAnnotations
@@ -60,9 +75,17 @@ WHERE parentItemID = ?
 """
 
 
-def get_annotations_for_id(id):  # noqa
-    conn = connect()
+def get_annotations_for_id(id, zotero_data_dir=None) -> List[dict]:  # noqa
+    zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
+
+    conn = connect(zotero_data_dir)
     cur = conn.cursor()
     cur.execute(SQL_GET_ANNOTATIONS_FOR_ID, (id,))
     rows = cur.fetchall()
-    return rows
+
+    def transform(row):
+        row = dict(row)
+        row["position"] = json.loads(row["position"])
+        return row
+
+    return [transform(row) for row in rows]
