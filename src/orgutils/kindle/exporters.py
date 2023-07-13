@@ -57,14 +57,14 @@ def _inspect_target_file(target_file):
             push_headers_to(sorted_items, target)
 
 
-def export_to_org(highlights, lang):
-    with open(highlights) as f:
+def export_to_org(dump, lang):  # noqa
+    with open(dump) as f:
         jd = json.load(f)
 
     if lang == "ja":
         preprocess = preprocess_ja
     else:
-        preprocess = lambda s: s
+        preprocess = lambda s: s  # noqa
 
     title = preprocess(jd["title"])
     authors = jd["authors"]
@@ -112,6 +112,4 @@ def export_to_org(highlights, lang):
             org.append(structs.Paragraph(item["note"]))
 
     # render org doc
-    for i in org:
-        print("\n".join(i.render()))
-        print()
+    print(structs.dumps(org))
