@@ -1,9 +1,12 @@
 """Zotero database (sqlite)."""
+import contextlib
 import functools
 import json
+import shutil
 import sqlite3
+import tempfile
 from pathlib import Path
-from typing import List
+from typing import Generator, List
 
 
 @functools.cache
@@ -16,12 +19,25 @@ def _find_zotero_data_dir(path: str = None) -> Path:
             return path
 
 
-def connect(zotero_data_dir: str = None) -> sqlite3.Connection:
+@contextlib.contextmanager
+def connect(zotero_data_dir: str = None) -> Generator[sqlite3.Connection, None, None]:
     """Get SQLite connection."""
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
-    conn = sqlite3.connect(zotero_data_dir / "zotero.sqlite")
-    conn.row_factory = sqlite3.Row
-    return conn
+
+    db_src = zotero_data_dir / "zotero.sqlite"
+
+    # Zotero locks the database too aggressively; make a (temporary) copy and work with
+    # it.
+    with tempfile.NamedTemporaryFile("w") as tf:
+        dbf = tf.name
+        shutil.copy(db_src, dbf)
+
+        conn = sqlite3.connect(dbf)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
 
 
 SQL_LIST_ITEMS: str = """
@@ -37,13 +53,13 @@ GROUP BY parentItemID;
 """
 
 
-def get_item_list(zotero_data_dir=None) -> List:
+def get_item_list(zotero_data_dir=None) -> List:  # noqa
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
-    conn = connect(zotero_data_dir)
-    cur = conn.cursor()
-    cur.execute(SQL_LIST_ITEMS)
-    rows = cur.fetchall()
+    with connect(zotero_data_dir) as conn:
+        cur = conn.cursor()
+        cur.execute(SQL_LIST_ITEMS)
+        rows = cur.fetchall()
 
     return rows
 
@@ -65,10 +81,11 @@ GROUP BY parentItemID;
 def get_filename_for_id(id, zotero_data_dir=None) -> Path:  # noqa
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
-    conn = connect(zotero_data_dir)
-    cur = conn.cursor()
-    cur.execute(SQL_GET_FILENAME_FOR_ID, (id,))
-    row = cur.fetchone()
+    with connect(zotero_data_dir) as conn:
+        cur = conn.cursor()
+        cur.execute(SQL_GET_FILENAME_FOR_ID, (id,))
+        row = cur.fetchone()
+
     if not row:
         raise ValueError("Item for ID does not exist")
 
@@ -89,10 +106,10 @@ WHERE parentItemID = ?
 def get_annotations_for_id(id, zotero_data_dir=None) -> List[dict]:  # noqa
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
-    conn = connect(zotero_data_dir)
-    cur = conn.cursor()
-    cur.execute(SQL_GET_ANNOTATIONS_FOR_ID, (id,))
-    rows = cur.fetchall()
+    with connect(zotero_data_dir) as conn:
+        cur = conn.cursor()
+        cur.execute(SQL_GET_ANNOTATIONS_FOR_ID, (id,))
+        rows = cur.fetchall()
 
     def transform(row):
         row = dict(row)
