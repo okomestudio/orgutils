@@ -42,14 +42,13 @@ def connect(zotero_data_dir: str = None) -> Generator[sqlite3.Connection, None, 
 
 SQL_LIST_ITEMS: str = """
 SELECT
-    parentItemID AS id,
+    anno.parentItemID AS id,
     COUNT(*) AS annotationCount,
-    itemDataValues.value AS filename
-FROM itemAnnotations annotations
-    LEFT JOIN items parents ON parents.itemID = annotations.parentItemID
-    LEFT JOIN itemData ON itemData.itemID = parents.itemID AND itemData.fieldID = 1
-    LEFT JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
-GROUP BY parentItemID;
+    SUBSTR(attach.path, 9) AS filename
+FROM itemAnnotations anno
+    LEFT JOIN items parents ON parents.itemID = anno.parentItemID
+    LEFT JOIN itemAttachments attach ON attach.itemID = parents.itemID
+GROUP BY id;
 """
 
 
@@ -66,15 +65,14 @@ def get_item_list(zotero_data_dir=None) -> List:  # noqa
 
 SQL_GET_FILENAME_FOR_ID: str = """
 SELECT
-    parentItemID AS itemID,
-    key,
-    itemDataValues.value AS filename
-FROM itemAnnotations annotations
-    LEFT JOIN items parents ON parents.itemID = annotations.parentItemID
-    LEFT JOIN itemData ON itemData.itemID = parents.itemID AND itemData.fieldID = 1
-    LEFT JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
-WHERE parentItemID = ?
-GROUP BY parentItemID;
+    anno.parentItemID AS itemID,
+    parents.key,
+    SUBSTR(attach.path, 9) AS filename
+FROM itemAnnotations anno
+    LEFT JOIN items parents ON parents.itemID = anno.parentItemID
+    LEFT JOIN itemAttachments attach ON attach.itemID = parents.itemID
+WHERE anno.parentItemID = ?
+GROUP BY anno.parentItemID;
 """
 
 
