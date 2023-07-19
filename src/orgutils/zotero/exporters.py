@@ -16,15 +16,23 @@ def list_items():  # noqa
         print(f"{ row['id'] }\t{ row['annotationCount'] }\t\"{ row['filename'] }\"")
 
 
-def export_to_org(id):  # noqa
-    filename = db.get_filename_for_id(id)
+Item = namedtuple("Item", ("loc", "object"))
 
-    Item = namedtuple("Item", ("loc", "object"))
-    items: List[Item] = []
 
-    # Get document outline (table of contents).
+def _get_outline(filename: str) -> List[Item] | None:
+    """Get document outline (table of contents)."""
     outline_xml = subprocess.check_output(["dumppdf.py", "-T", filename])
-    for elmt in ET.fromstring(outline_xml).findall(".//outline[@title]"):
+
+    try:
+        root = ET.fromstring(outline_xml)
+    except ET.ParseError:
+        return
+
+    if not root:
+        return
+
+    items = []
+    for elmt in root.findall(".//outline[@title]"):
         page = int(elmt.find("pageno").text)
         numbers = elmt.findall(".//number")
         x = float(numbers[0].text)
@@ -38,6 +46,18 @@ def export_to_org(id):  # noqa
             {"page": page, "pos_x": x, "pos_y": y},
         )
         items.append(Item((page, -y, x), obj))
+
+    return items
+
+
+def export_to_org(id):  # noqa
+    filename = db.get_filename_for_id(id)
+
+    items: List[Item] = []
+
+    outline_items = _get_outline(filename)
+    if outline_items:
+        items.extend(outline_items)
 
     # Get annotations.
     for row in db.get_annotations_for_id(id):
