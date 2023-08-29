@@ -77,7 +77,18 @@ def export_to_org(dump, lang):  # noqa
     sorted_items = [(x["location"]["value"], x) for x in highlights]
 
     base_heading_depth = 1
-    sorted_items = sorted(sorted_items, key=lambda tpl: (tpl[0], tpl[1]["text"]))
+    sorted_items = sorted(
+        sorted_items,
+        key=lambda tpl: (
+            tpl[0],
+            (
+                -1
+                if (tpl[1].get("note") or "").startswith("h")
+                or (tpl[1].get("note") or "").startswith("H")
+                else 0
+            ),
+        ),
+    )
 
     # build org tree
     org = []
