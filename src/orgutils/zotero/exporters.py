@@ -42,7 +42,7 @@ def _get_outline(filename: str) -> List[Item] | None:
 
         obj = structs.Heading(
             title,
-            level,
+            level + 1,
             {"page": page, "pos_x": x, "pos_y": y},
         )
         items.append(Item((page, -y, x), obj))
@@ -81,8 +81,8 @@ def export_to_org(id):  # noqa
         if objs:
             items.append(Item((page, -y, x), structs.Group(objs)))
 
-    print(
-        structs.dumps(
-            (item.object for item in sorted(items, key=lambda item: item.loc))
-        )
+    items = [Item((-1, 0, 0), structs.Heading("Highlights & notes", 1, {}))] + sorted(
+        items, key=lambda item: item.loc
     )
+
+    print(structs.dumps((item.object for item in items)))
