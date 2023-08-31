@@ -50,8 +50,9 @@ def _get_outline(filename: str) -> List[Item] | None:
     return items
 
 
-def export_to_org(id):  # noqa
+def export_to_org(id: str, lang: str):  # noqa
     filename = db.get_filename_for_id(id)
+    # preprocess = preprocess_ja if lang == "ja" else lambda s: s
 
     items: List[Item] = []
 
