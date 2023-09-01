@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 
 from ..org import structs
 from . import db
-from ..utils import remove_extra_whitespaces
+from ..utils import remove_whitespaces_between_zenkaku
 
 
 def list_items():  # noqa
@@ -75,7 +75,9 @@ def export_to_org(id: str, lang: str):  # noqa
         objs = []
         if text:
             objs.append(
-                structs.QuoteBlock(remove_extra_whitespaces(text) + f" (p. { page })")
+                structs.QuoteBlock(
+                    remove_whitespaces_between_zenkaku(text) + f" (p. { page })"
+                )
             )
         if comment:
             objs.append(structs.Paragraph(comment + f" (p. { page })"))

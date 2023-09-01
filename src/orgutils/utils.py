@@ -10,7 +10,7 @@ def dumps_xml(tree, indent: int = 2) -> str:
     return dom.toprettyxml(indent=" " * 2)
 
 
-def remove_extra_whitespaces(s: str) -> str:  # noqa
-    # Remove space(s) between zenkaku characters:
+def remove_whitespaces_between_zenkaku(s: str) -> str:  # noqa
+    """Remove space(s) between zenkaku characters."""
     s = re.sub(r"(?<=[^\x01-\x7E])([^\S\n\r]+)(?=[^\x01-\x7E])", "", s)
     return s

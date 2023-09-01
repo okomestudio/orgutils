@@ -9,20 +9,11 @@ import json
 import re
 
 from ..org import structs
-
-
-def preprocess_ja(text):
-    """Preprocess Japanese text."""
-    if text is None:
-        return None
-    text = re.sub(r"　", "  ", text)
-    text = re.sub(r"(?<=\S)\s(?=\S)", "", text)
-    text = re.sub(r"\s+", " ", text)
-    return text
+from .. import utils
 
 
 def _inspect_target_file(target_file):
-    # TODO: This is not implemented
+    raise NotImplementedError
     if target_file:
         with open(target_file):
             root = orgparse.load(f)
@@ -61,18 +52,14 @@ def export_to_org(dump, lang):  # noqa
     with open(dump) as f:
         jd = json.load(f)
 
-    if lang == "ja":
-        preprocess = preprocess_ja
-    else:
-        preprocess = lambda s: s  # noqa
+    preprocess = (
+        utils.remove_whitespaces_between_zenkaku if lang == "ja" else lambda s: s
+    )
 
     title = preprocess(jd["title"])
     authors = jd["authors"]
     asin = jd["asin"]
     highlights = jd["highlights"]
-    for item in highlights:
-        item["text"] = preprocess(item["text"])
-        item["note"] = preprocess(item["note"])
 
     sorted_items = [(x["location"]["value"], x) for x in highlights]
 
@@ -104,12 +91,12 @@ def export_to_org(dump, lang):  # noqa
     )
 
     for loc, item in sorted_items:
-        m = re.match(r"^[hH](\d+)$", item.get("note") or "")
+        m = re.match(r"^[hH](\d+)(|\s+(.*))$", item.get("note") or "")
         if m:
             heading_depth = int(m.group(1))
             org.append(
                 structs.Heading(
-                    item["text"],
+                    preprocess(item["text"] or m.group(3)),
                     heading_depth + base_heading_depth,
                     {"kindle_loc": item["location"]["value"]},
                 )
@@ -117,7 +104,9 @@ def export_to_org(dump, lang):  # noqa
             continue
 
         org.append(
-            structs.QuoteBlock(f"{ item['text'] } (loc. { item['location']['value'] })")
+            structs.QuoteBlock(
+                f"{ preprocess(item['text']) } (loc. { item['location']['value'] })"
+            )
         )
         if item.get("note"):
             org.append(structs.Paragraph(item["note"]))
