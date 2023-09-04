@@ -96,7 +96,7 @@ def export_to_org(dump, lang):  # noqa
             heading_depth = int(m.group(1))
             org.append(
                 structs.Heading(
-                    preprocess(item["text"] or m.group(3)),
+                    preprocess(item["text"] or m.group(3) or "--MISSING--"),
                     heading_depth + base_heading_depth,
                     {"kindle_loc": item["location"]["value"]},
                 )
