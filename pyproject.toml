@@ -30,6 +30,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "types-lxml",
+    "types-Markdown==3.5.0.3",
     "mypy==1.8.0",
     "pre-commit==3.6.1",
     "ruff==0.2.2",

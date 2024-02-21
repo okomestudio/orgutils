@@ -9,3 +9,6 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
+        additional_dependencies:
+          - types-lxml
+          - types-Markdown==3.5.0.3
