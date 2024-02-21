@@ -1,9 +1,11 @@
 """CLI for Org Kindle exporter."""
 from argparse import ArgumentParser
+
 from .exporters import export_to_org
 
 
-def cli():  # noqa
+def cli() -> None:
+    """CLI entry point."""
     p = ArgumentParser(description=__doc__)
     p.add_argument("dump", help="Bookcision JSON dump")
     p.add_argument("--lang", "-l", choices=("en", "ja"), default="en", help="Language")
@@ -14,4 +16,4 @@ def cli():  # noqa
 
 
 if __name__ == "__main__":
-    raise SystemExit(cli())
+    raise SystemExit(cli())  # type: ignore

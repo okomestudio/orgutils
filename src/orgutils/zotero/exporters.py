@@ -1,15 +1,17 @@
 """Zotero exporters."""
 import subprocess
 from collections import namedtuple
+from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
+from xml.etree.ElementTree import Element
 
 from ..org import structs
-from . import db
 from ..utils import remove_whitespaces_between_zenkaku
+from . import db
 
 
-def list_items():  # noqa
+def list_items() -> None:
     rows = db.get_item_list()
     print("\t".join(["ID", "Annotation Count", "File"]))
     for row in rows:
@@ -19,26 +21,50 @@ def list_items():  # noqa
 Item = namedtuple("Item", ("loc", "object"))
 
 
-def _get_outline(filename: str) -> List[Item] | None:
+def _element_find(elmt: Element, path: str) -> Element:
+    e = elmt.find(path)
+    if not e:
+        raise RuntimeError(f"Element not found at {path}")
+    return e
+
+
+def _element_findall(elmt: Element, path: str) -> List[Element]:
+    e = elmt.findall(path)
+    if not e:
+        raise RuntimeError(f"Element items not found at {path}")
+    return e
+
+
+def _element_text(elmt: Element) -> str:
+    if elmt.text is None:
+        raise RuntimeError("Element.text attribute returns None")
+    return elmt.text
+
+
+def _get_outline(filename: str | Path) -> List[Item] | None:
     """Get document outline (table of contents)."""
     outline_xml = subprocess.check_output(["dumppdf.py", "-T", filename])
 
     try:
         root = ET.fromstring(outline_xml)
     except ET.ParseError:
-        return
+        return None
 
     if not root:
-        return
+        return None
 
     items = []
     for elmt in root.findall(".//outline[@title]"):
-        page = int(elmt.find("pageno").text)
-        numbers = elmt.findall(".//number")
-        x = float(numbers[0].text)
-        y = float(numbers[1].text)
+        page = int(_element_text(_element_find(elmt, "pageno")))
+        numbers = _element_findall(elmt, ".//number")
+        x = float(_element_text(numbers[0]))
+        y = float(_element_text(numbers[1]))
         title = elmt.get("title")
-        level = int(elmt.get("level"))
+        level = int(elmt.get("level", -1))
+        if title is None:
+            raise RuntimeError("'title' not found")
+        if level < 0:
+            raise RuntimeError("'level' not found")
 
         obj = structs.Heading(
             title,
@@ -50,7 +76,7 @@ def _get_outline(filename: str) -> List[Item] | None:
     return items
 
 
-def export_to_org(id: str, lang: str):  # noqa
+def export_to_org(id: str, lang: str) -> None:
     filename = db.get_filename_for_id(id)
     # preprocess = preprocess_ja if lang == "ja" else lambda s: s
 
@@ -68,11 +94,11 @@ def export_to_org(id: str, lang: str):  # noqa
             first = rects[0]
             x, y = float(first[0]), float(first[-1])
         else:
-            x, y = None, None
+            raise RuntimeError('"rects" not found')
         text = row["text"]
         comment = row["comment"]
 
-        objs = []
+        objs: List[structs.OrgObject] = []
         if text:
             objs.append(
                 structs.QuoteBlock(

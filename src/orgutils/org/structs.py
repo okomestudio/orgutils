@@ -1,27 +1,27 @@
 """Org structures."""
 from dataclasses import dataclass
-from typing import List
+from typing import Iterable, List
 
 
 @dataclass
-class OrgObject:  # noqa
-    def render(self) -> List[str]:  # noqa
+class OrgObject:
+    def render(self) -> List[str]:
         raise NotImplementedError
 
 
 @dataclass
-class OrgFile(OrgObject):  # noqa
+class OrgFile(OrgObject):
     title: str
     properties: dict
 
 
 @dataclass
-class Heading(OrgObject):  # noqa
+class Heading(OrgObject):
     title: str
     level: int
     properties: dict
 
-    def render(self) -> List[str]:  # noqa
+    def render(self) -> List[str]:
         lines = []
         lines.append("*" * self.level + " " + self.title)
         if self.properties:
@@ -33,21 +33,21 @@ class Heading(OrgObject):  # noqa
 
 
 @dataclass
-class Paragraph(OrgObject):  # noqa
+class Paragraph(OrgObject):
     content: str
 
-    def render(self):  # noqa
+    def render(self) -> List[str]:
         return [self.content]
 
 
 @dataclass
-class Block(OrgObject):  # noqa
+class Block(OrgObject):
     content: str
 
 
 @dataclass
-class QuoteBlock(Block):  # noqa
-    def render(self) -> List[str]:  # noqa
+class QuoteBlock(Block):
+    def render(self) -> List[str]:
         lines = []
         lines.append("#+BEGIN_QUOTE")
         lines.append(self.content)
@@ -56,17 +56,17 @@ class QuoteBlock(Block):  # noqa
 
 
 @dataclass
-class Group(OrgObject):  # noqa
+class Group(OrgObject):
     objects: List[OrgObject]
 
-    def render(self) -> List[str]:  # noqa
+    def render(self) -> List[str]:
         lines = []
         for obj in self.objects:
             lines.extend(obj.render())
         return lines
 
 
-def dumps(org_objects: List[OrgObject]) -> str:  # noqa
+def dumps(org_objects: Iterable[OrgObject]) -> str:
     lines = []
     for org_object in org_objects:
         lines.extend(org_object.render() + [""])

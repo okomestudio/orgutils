@@ -1,12 +1,13 @@
 """Snipd converter."""
 import re
 import sys
+from typing import Any, List
 
 import markdown
 from lxml import etree
 
 
-def to_html(snipd_export: str, **kwargs) -> None:
+def to_html(snipd_export: str, **kwargs: Any) -> str:
     """Convert Snip markdown dump to HTML."""
     with open(snipd_export) as f:
         html = markdown.markdown(f.read())
@@ -44,7 +45,7 @@ def to_html(snipd_export: str, **kwargs) -> None:
     return etree.tostring(dom, pretty_print=True, encoding=str)
 
 
-def fix_org(**kwargs):
+def fix_org(**kwargs: Any) -> List[str]:
     """Fix converted Org file."""
     input_data = kwargs.get("snipd_export")
     if input_data:
@@ -65,6 +66,9 @@ def fix_org(**kwargs):
         line = re.sub(r"^Show notes$", "** Show notes", line)
         line = re.sub(r"^> (.*)", r"- \1", line)
         line = re.sub(r"^(- Show notes link: .*)$", r"--------\n\1", line)
+
+        # Remove leading whitespaces
+        line = re.sub(r"^\s+(.+)$", r"\1", line)
 
         # Double backslash converted from <b>
         line = re.sub(r"\\", "", line)

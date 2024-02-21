@@ -6,28 +6,31 @@ import shutil
 import sqlite3
 import tempfile
 from pathlib import Path
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 
 @functools.cache
-def _find_zotero_data_dir(path: str = None) -> Path:
+def _find_zotero_data_dir(path: Optional[str | Path] = None) -> Path:
     paths = [path] if path else []
     paths.extend([Path("~") / "Zotero", Path("~") / ".local" / "var" / "zotero"])
     for path in paths:
         path = Path(path).expanduser()
         if (path / "zotero.sqlite").exists():
             return path
+    raise ValueError("Zotedo data directory not found")
 
 
 @contextlib.contextmanager
-def connect(zotero_data_dir: str = None) -> Generator[sqlite3.Connection, None, None]:
+def connect(
+    zotero_data_dir: Optional[str | Path] = None,
+) -> Generator[sqlite3.Connection, None, None]:
     """Get SQLite connection."""
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
     db_src = zotero_data_dir / "zotero.sqlite"
 
-    # Zotero locks the database too aggressively; make a (temporary) copy and work with
-    # it.
+    # Zotero locks the database too aggressively; make a (temporary)
+    # copy and work with the copy.
     with tempfile.NamedTemporaryFile("w") as tf:
         dbf = tf.name
         shutil.copy(db_src, dbf)
@@ -40,7 +43,7 @@ def connect(zotero_data_dir: str = None) -> Generator[sqlite3.Connection, None, 
             conn.close()
 
 
-SQL_LIST_ITEMS: str = """
+SQL_LIST_ITEMS: str = """-- sql
 SELECT
     anno.parentItemID AS id,
     COUNT(*) AS annotationCount,
@@ -52,7 +55,7 @@ GROUP BY id;
 """
 
 
-def get_item_list(zotero_data_dir=None) -> List:  # noqa
+def get_item_list(zotero_data_dir: Optional[str | Path] = None) -> List:
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
     with connect(zotero_data_dir) as conn:
@@ -63,7 +66,7 @@ def get_item_list(zotero_data_dir=None) -> List:  # noqa
     return rows
 
 
-SQL_GET_FILENAME_FOR_ID: str = """
+SQL_GET_FILENAME_FOR_ID: str = """-- sql
 SELECT
     anno.parentItemID AS itemID,
     parents.key,
@@ -76,7 +79,7 @@ GROUP BY anno.parentItemID;
 """
 
 
-def get_filename_for_id(id, zotero_data_dir=None) -> Path:  # noqa
+def get_filename_for_id(id: str, zotero_data_dir: Optional[str | Path] = None) -> Path:
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
     with connect(zotero_data_dir) as conn:
@@ -87,10 +90,10 @@ def get_filename_for_id(id, zotero_data_dir=None) -> Path:  # noqa
     if not row:
         raise ValueError("Item for ID does not exist")
 
-    return zotero_data_dir / "storage" / row[1] / row[2]
+    return zotero_data_dir / "storage" / str(row[1]) / str(row[2])
 
 
-SQL_GET_ANNOTATIONS_FOR_ID = """
+SQL_GET_ANNOTATIONS_FOR_ID = """-- sql
 SELECT
     CAST(pageLabel AS INTEGER) AS page,
     position,
@@ -101,7 +104,9 @@ WHERE parentItemID = ?
 """
 
 
-def get_annotations_for_id(id, zotero_data_dir=None) -> List[dict]:  # noqa
+def get_annotations_for_id(
+    id: str, zotero_data_dir: Optional[str | Path] = None
+) -> List[dict]:
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
     with connect(zotero_data_dir) as conn:
@@ -109,9 +114,9 @@ def get_annotations_for_id(id, zotero_data_dir=None) -> List[dict]:  # noqa
         cur.execute(SQL_GET_ANNOTATIONS_FOR_ID, (id,))
         rows = cur.fetchall()
 
-    def transform(row):
-        row = dict(row)
-        row["position"] = json.loads(row["position"])
-        return row
+    def _transform(row: sqlite3.Row) -> dict:
+        row_as_dict = dict(row)
+        row_as_dict["position"] = json.loads(row_as_dict["position"])
+        return row_as_dict
 
-    return [transform(row) for row in rows]
+    return [_transform(row) for row in rows]
