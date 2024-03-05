@@ -18,6 +18,15 @@ Kindle
    python -m orgutils.kindle -l ja <json_dump>  # Org export of Bookcision dump (ja)
 
 
+Snipd
+-----
+
+.. code-block:: shell
+
+   python -m orgutils.snipd -h               # help
+   python -m orgutils.snipd <markdown-dump>  # Org export of Snipd dump
+
+
 Zotero
 ------
 
