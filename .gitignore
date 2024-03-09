@@ -106,5 +106,8 @@ venv.bak/
 # pyimport
 .pyimport/
 
+# ruff
+.ruff_cache
+
 # Emacs
 .dir-locals.el
