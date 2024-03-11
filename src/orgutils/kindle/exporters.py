@@ -14,41 +14,6 @@ from typing import List
 from .. import utils
 from ..org import structs
 
-# def _inspect_target_file(target_file):
-#     raise NotImplementedError
-#     if target_file:
-#         with open(target_file):
-#             root = orgparse.load(f)
-
-#         def find_target(node, target_heading, depth):
-#             if node.heading == target_heading:
-#                 return node, depth
-#             for child_node in node.children:
-#                 result = find_target(child_node, target_heading, depth + 1)
-#                 if result:
-#                     return result
-
-#         def push_headers_to(items, node, heading_depth=1):
-#             for child in node.children:
-#                 loc = child.get_property("KINDLE_LOC")
-#                 if loc:
-#                     loc = int(loc)
-#                     items.append(
-#                         (
-#                             loc,
-#                             {
-#                                 "text": child.heading,
-#                                 "location": {"value": loc},
-#                                 "note": f"H{ heading_depth + 1}",
-#                             },
-#                         )
-#                     )
-#                     push_headers_to(items, child, heading_depth + 1)
-
-#         target, base_heading_depth = find_target(root, "That", 0)
-#         if target:
-#             push_headers_to(sorted_items, target)
-
 
 def export_to_org(dump: str, lang: str) -> None:
     """Take JSON dump and export to Org."""
@@ -64,6 +29,7 @@ def export_to_org(dump: str, lang: str) -> None:
     asin = jd["asin"]
     highlights = jd["highlights"]
 
+    # Sort items by location
     sorted_items = [(x["location"]["value"], x) for x in highlights]
 
     base_heading_depth = 1
@@ -72,6 +38,8 @@ def export_to_org(dump: str, lang: str) -> None:
         key=lambda tpl: (
             tpl[0],
             (
+                # Make header lines come earliest if they are on the
+                # same location:
                 -1
                 if (tpl[1].get("note") or "").startswith("h")
                 or (tpl[1].get("note") or "").startswith("H")
@@ -80,7 +48,11 @@ def export_to_org(dump: str, lang: str) -> None:
         ),
     )
 
-    # build org tree
+    # Build org tree for vocab
+    org_vocab: List[structs.OrgObject] = []
+    org_vocab.append(structs.Heading("Vocab", 1, {}))
+
+    # Build org tree
     org: List[structs.OrgObject] = []
     org.append(
         structs.Heading(
@@ -94,6 +66,7 @@ def export_to_org(dump: str, lang: str) -> None:
     )
 
     for loc, item in sorted_items:
+        # Header
         m = re.match(r"^[hH](\d+)(|\s+(.*))$", item.get("note") or "")
         if m:
             heading_depth = int(m.group(1))
@@ -102,6 +75,23 @@ def export_to_org(dump: str, lang: str) -> None:
                     preprocess(m.group(3) or item["text"] or "--MISSING--"),
                     heading_depth + base_heading_depth,
                     {"kindle_loc": item["location"]["value"]},
+                )
+            )
+            continue
+
+        # Vocab
+        m = re.match(r"^(?:[vV]ocab|語彙|表現)\s*(|.*)$", item.get("note") or "")
+        if m:
+            org_vocab.append(
+                structs.Heading(
+                    preprocess(m.group(1) or item["text"]),
+                    1 + base_heading_depth,
+                    {"kindle_loc": item["location"]["value"]},
+                )
+            )
+            org_vocab.append(
+                structs.QuoteBlock(
+                    f"{ preprocess(item['text']) } (loc. { item['location']['value'] })"
                 )
             )
             continue
@@ -116,3 +106,4 @@ def export_to_org(dump: str, lang: str) -> None:
 
     # render org doc
     print(structs.dumps(org))
+    print(structs.dumps(org_vocab))
