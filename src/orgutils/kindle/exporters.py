@@ -1,22 +1,21 @@
 """Kindle highlights to Org converter.
 
 Use Bookcision to JSON export Kindle highlights and notes in Amazon
-Cloud Reader. Then feed that file to this script to import as Org
-file.
-
-TODO: Rewrite in Emacs Lisp.
-
+Cloud Reader.
 """
 import json
 import re
+from collections import namedtuple
 from typing import List
 
 from .. import utils
 from ..org import structs
 
+KindleHighlight = namedtuple("KindleHighlight", ("location", "data"))
+
 
 def export_to_org(dump: str, lang: str) -> None:
-    """Take JSON dump and export to Org."""
+    """Take Bookcision JSON dump and export as Org."""
     with open(dump) as f:
         jd = json.load(f)
 
@@ -30,29 +29,29 @@ def export_to_org(dump: str, lang: str) -> None:
     highlights = jd["highlights"]
 
     # Sort items by location
-    sorted_items = [(x["location"]["value"], x) for x in highlights]
+    sorted_items = [KindleHighlight(x["location"]["value"], x) for x in highlights]
 
     base_heading_depth = 1
     sorted_items = sorted(
         sorted_items,
-        key=lambda tpl: (
-            tpl[0],
+        key=lambda item: (
+            item.location,
             (
                 # Make header lines come earliest if they are on the
                 # same location:
                 -1
-                if (tpl[1].get("note") or "").startswith("h")
-                or (tpl[1].get("note") or "").startswith("H")
+                if (item.data.get("note") or "").startswith("h")
+                or (item.data.get("note") or "").startswith("H")
                 else 0
             ),
         ),
     )
 
-    # Build org tree for vocab
+    # Org tree for vocab
     org_vocab: List[structs.OrgObject] = []
     org_vocab.append(structs.Heading("Vocab", 1, {}))
 
-    # Build org tree
+    # Org tree for notes & highlights
     org: List[structs.OrgObject] = []
     org.append(
         structs.Heading(
@@ -65,44 +64,78 @@ def export_to_org(dump: str, lang: str) -> None:
         )
     )
 
-    for loc, item in sorted_items:
-        # Header
-        m = re.match(r"^[hH](\d+)(|\s+(.*))$", item.get("note") or "")
-        if m:
-            heading_depth = int(m.group(1))
-            org.append(
-                structs.Heading(
-                    preprocess(m.group(3) or item["text"] or "--MISSING--"),
-                    heading_depth + base_heading_depth,
-                    {"kindle_loc": item["location"]["value"]},
-                )
-            )
-            continue
+    # Parse items in the order of location
+    idx = 0
+    while idx < len(sorted_items):
+        item = sorted_items[idx]
 
         # Vocab
-        m = re.match(r"^(?:[vV]ocab|語彙|表現)\s*(|.*)$", item.get("note") or "")
+        m = re.match(r"^(?:[vV]ocab|語彙|表現)\s*(|.*)$", item.data.get("note") or "")
         if m:
             org_vocab.append(
                 structs.Heading(
-                    preprocess(m.group(1) or item["text"]),
+                    preprocess(m.group(1) or item.data["text"]),
                     1 + base_heading_depth,
-                    {"kindle_loc": item["location"]["value"]},
+                    {"kindle_loc": item.location},
                 )
             )
             org_vocab.append(
                 structs.QuoteBlock(
-                    f"{ preprocess(item['text']) } (loc. { item['location']['value'] })"
+                    f"{ preprocess(item.data['text']) } (loc. { item.location })"
                 )
             )
+            idx += 1
             continue
 
+        # Header
+        m = re.match(r"^[hH](\d+)(|\s+(.*))$", item.data.get("note") or "")
+        if m:
+            heading_depth = int(m.group(1))
+
+            text = m.group(3) or item.data["text"]
+            if not text:
+                # For the most part, missing text here means the note
+                # and highlight locations do not match, or a separate
+                # note item exists at the same location. Look for the
+                # closest highlight text that looks like a heading.
+                items = sorted(
+                    [
+                        (
+                            abs(sorted_items[idx + 1].location - item.location),
+                            len(sorted_items[idx + 1].data["text"]),
+                            sorted_items[idx + 1],
+                        ),
+                        (
+                            abs(sorted_items[idx - 1].location - item.location),
+                            len(sorted_items[idx - 1].data["text"]),
+                            sorted_items[idx - 1],
+                        ),
+                    ]
+                )
+                if items[0][0] <= 1:
+                    text = items[0][2].data["text"]
+                else:
+                    text = "--MISSING--"
+
+            org.append(
+                structs.Heading(
+                    preprocess(text),
+                    heading_depth + base_heading_depth,
+                    {"kindle_loc": item.location},
+                )
+            )
+            idx += 1
+            continue
+
+        # Quote
         org.append(
             structs.QuoteBlock(
-                f"{ preprocess(item['text']) } (loc. { item['location']['value'] })"
+                f"{ preprocess(item.data['text']) } (loc. { item.location })"
             )
         )
-        if item.get("note"):
-            org.append(structs.Paragraph(item["note"]))
+        if item.data.get("note"):
+            org.append(structs.Paragraph(item.data["note"]))
+        idx += 1
 
     # render org doc
     print(structs.dumps(org))
