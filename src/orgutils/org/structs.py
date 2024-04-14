@@ -67,7 +67,16 @@ class Group(OrgObject):
 
 
 def dumps(org_objects: Iterable[OrgObject]) -> str:
-    lines = []
+    padded_structs = (Paragraph, Block)
+
+    lines: list[str] = []
     for org_object in org_objects:
-        lines.extend(org_object.render() + [""])
+        if isinstance(org_object, padded_structs):
+            if lines and lines[-1] != "":
+                lines.append("")
+            lines.extend(org_object.render())
+            lines.append("")
+        else:
+            lines.extend(org_object.render())
+
     return "\n".join(lines)
