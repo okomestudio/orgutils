@@ -35,7 +35,7 @@ def to_html(snipd_export: str, **kwargs: Any) -> str:
                 summary.getparent().remove(summary)
 
             blockquotes = details.xpath(".//blockquote")
-            for blockquote in blockquotes:
+            for blockquote in blockquotes[::-1]:
                 transcript.addnext(blockquote)
             details.getparent().remove(details)
 
