@@ -48,9 +48,9 @@ test = [
 "Buck Tracker" = "https://github.com/okomestudio/orgutils/issues"
 
 [project.scripts]
-org-kindle-exporter = "orgutils.kindle.__main__:cli"
-org-snpid-exporter = "orgutils.snipd.__main__:cli"
-org-zotero-exporter = "orgutils.zotero.__main__:cli"
+org-from-kindle = "orgutils.kindle.__main__:cli"
+org-from-snpid = "orgutils.snipd.__main__:cli"
+org-from-zotero = "orgutils.zotero.__main__:cli"
 snipdfilter = "orgutils.snipd.converter:cli"
 
 [tool.setuptools]
