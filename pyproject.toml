@@ -22,23 +22,25 @@ dependencies = [
     "lxml==5.3.0",
     "markdown==3.7",
     "orgparse==0.4.20231004",
+    "panflute==2.3.1",
     "pdfminer.six==20240706",
+    "pypandoc==1.14",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "types-lxml==2024.9.16",
-    "types-Markdown==3.7.0.20240822",
     "mypy==1.12.0",
     "pre-commit==4.0.1",
     "ruff==0.6.9",
+    "types-Markdown==3.7.0.20240822",
+    "types-lxml==2024.9.16",
 ]
 
 test = [
     "coverage[toml]==7.6.3",
-    "pytest==8.3.3",
     "pytest-cov==5.0.0",
     "pytest-mock==3.14.0",
+    "pytest==8.3.3",
 ]
 
 [project.urls]
@@ -49,6 +51,7 @@ test = [
 org-kindle-exporter = "orgutils.kindle.__main__:cli"
 org-snpid-exporter = "orgutils.snipd.__main__:cli"
 org-zotero-exporter = "orgutils.zotero.__main__:cli"
+snipdfilter = "orgutils.snipd.converter:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

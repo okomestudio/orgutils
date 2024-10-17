@@ -35,3 +35,9 @@ Zotero
    python -m orgutils.zotero -h            # help
    python -m orgutils.zotero list          # get doc IDs
    python -m orgutils.zotero extract <id>  # Org export of doc with ID
+
+Installation
+============
+
+For Snipd export management, `pandoc
+<https://pandoc.org/installing.html>` needs to be installed.
