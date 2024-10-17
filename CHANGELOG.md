@@ -2,6 +2,7 @@
 
 Changed:
 
+- Update README
 - Rename scripts
 - (snipd) Adapt to the new Snip export format
 - (snipd) Use pypandoc and panflute for pandoc AST filtering
