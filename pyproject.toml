@@ -49,7 +49,7 @@ test = [
 
 [project.scripts]
 org-from-kindle = "orgutils.kindle.__main__:cli"
-org-from-snpid = "orgutils.snipd.__main__:cli"
+org-from-snipd = "orgutils.snipd.__main__:cli"
 org-from-zotero = "orgutils.zotero.__main__:cli"
 snipdfilter = "orgutils.snipd.converter:cli"
 
