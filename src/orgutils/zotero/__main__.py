@@ -1,4 +1,5 @@
 """CLI for Org Zotero exporter."""
+
 from argparse import ArgumentParser
 
 from .exporters import export_to_org, list_items
@@ -10,7 +11,7 @@ def cli():  # noqa
 
     p_extract = subparsers.add_parser("extract", help="extract stuff")
     p_extract.add_argument("id", help="item ID")
-    p.extract.add_argument(
+    p_extract.add_argument(
         "--lang", "-l", choices=("en", "ja"), default="en", help="Language"
     )
     p_extract.set_defaults(func=export_to_org)

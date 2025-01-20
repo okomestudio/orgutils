@@ -19,9 +19,9 @@ To convert an export JSON dump from Kindle notes and highlights using `Bookcisio
 
 .. code-block:: shell
 
-   orgorg-from-kindle -h                 # help
-   orgorg-from-kindle -l en <json-dump>  # dump is in English
-   orgorg-from-kindle -l ja <json_dump>  # dump is in Japanese
+   org-from-kindle -h                 # help
+   org-from-kindle -l en <json-dump>  # dump is in English
+   org-from-kindle -l ja <json_dump>  # dump is in Japanese
 
 
 Snipd
