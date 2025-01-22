@@ -1,4 +1,5 @@
 """Zotero database (sqlite)."""
+
 import contextlib
 import functools
 import json
@@ -45,6 +46,31 @@ def connect(
 
 SQL_LIST_ITEMS: str = """-- sql
 SELECT
+    items.key,
+    itemDataValues.value
+FROM items
+    LEFT JOIN itemData ON itemData.itemID = items.itemID
+    LEFT JOIN itemDataValues ON itemDataValues.valueID = itemData.valueID
+    LEFT JOIN fieldsCombined ON fieldsCombined.fieldID = itemData.fieldID
+WHERE
+    itemDataValues.value LIKE '%Evolution%'
+    AND fieldsCombined.fieldName = 'title'
+"""
+
+
+def get_item_list(zotero_data_dir: Optional[str | Path] = None) -> list:
+    zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
+
+    with connect(zotero_data_dir) as conn:
+        cur = conn.cursor()
+        cur.execute(SQL_LIST_ITEMS)
+        rows = cur.fetchall()
+
+    return rows
+
+
+SQL_LIST_DOCS: str = """-- sql
+SELECT
     anno.parentItemID AS id,
     COUNT(*) AS annotationCount,
     SUBSTR(attach.path, 9) AS filename
@@ -55,12 +81,12 @@ GROUP BY id;
 """
 
 
-def get_item_list(zotero_data_dir: Optional[str | Path] = None) -> List:
+def get_doc_list(zotero_data_dir: Optional[str | Path] = None) -> List:
     zotero_data_dir = _find_zotero_data_dir(zotero_data_dir)
 
     with connect(zotero_data_dir) as conn:
         cur = conn.cursor()
-        cur.execute(SQL_LIST_ITEMS)
+        cur.execute(SQL_LIST_DOCS)
         rows = cur.fetchall()
 
     return rows
