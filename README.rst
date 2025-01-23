@@ -32,8 +32,9 @@ use ``org-from-snipd``.
 
 .. code-block:: shell
 
-   org-from-snipd -h               # help
-   org-from-snipd <markdown-dump>  # Org export of Snipd dump
+   org-from-snipd -h                    # help
+   org-from-snipd <markdown-dump>       # Org export of Snipd dump
+   org-from-snipd <markdown-dump> <no>  # extract <no>-th section
 
 
 Zotero
