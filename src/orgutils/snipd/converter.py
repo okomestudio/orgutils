@@ -161,15 +161,15 @@ def _preprocess_md(md: str) -> str:
 
 
 def _postprocess_org(org: str) -> str:
-    # print("M", org)
+    org = re.sub(r"^>( ?(.*))\n", r"\2\n\n", org, flags=re.M)
     org = re.sub(r"^ +(.+)\n", r"\1\n", org, flags=re.M)
     return org
 
 
 def convert(md: str, output_format: str) -> str:
     """Convert Markdown content to a str doc of given format."""
-    md = _preprocess_md(md)
-    html = pypandoc.convert_text(md, "html", format="md")
+    # md = _preprocess_md(md)
+    html = pypandoc.convert_text(md, "html", format="gfm")
     output = pypandoc.convert_text(
         html,
         output_format,
