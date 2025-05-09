@@ -3,10 +3,12 @@
 Use Bookcision to JSON export Kindle highlights and notes in Amazon
 Cloud Reader.
 """
+
 import json
 import re
 from collections import namedtuple
-from typing import List
+
+from lxml import etree, html
 
 from .. import utils
 from ..org import structs
@@ -14,7 +16,7 @@ from ..org import structs
 KindleHighlight = namedtuple("KindleHighlight", ("location", "data"))
 
 
-def export_to_org(dump: str, lang: str) -> None:
+def export_to_org(dump: str, lang: str, **kwargs) -> None:
     """Take Bookcision JSON dump and export as Org."""
     with open(dump) as f:
         jd = json.load(f)
@@ -48,11 +50,11 @@ def export_to_org(dump: str, lang: str) -> None:
     )
 
     # Org tree for vocab
-    org_vocab: List[structs.OrgObject] = []
+    org_vocab: list[structs.OrgObject] = []
     org_vocab.append(structs.Heading("Vocab", 1, {}))
 
     # Org tree for notes & highlights
-    org: List[structs.OrgObject] = []
+    org: list[structs.OrgObject] = []
     org.append(
         structs.Heading(
             title,
@@ -140,3 +142,30 @@ def export_to_org(dump: str, lang: str) -> None:
     # render org doc
     print(structs.dumps(org))
     print(structs.dumps(org_vocab))
+
+
+def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
+    """Take HTML export file and convert to Org."""
+    with open(dump) as f:
+        tree = html.parse(f)
+
+    divs: list[etree.Element] = tree.xpath(
+        "//div[@class='sectionHeading' or @class='noteHeading' or @class='noteText']"
+    )
+
+    org: list[structs.OrgObject] = []
+
+    while divs:
+        div = divs.pop(0)
+        if div.attrib.get("class") == "sectionHeading":
+            title = "".join(div.itertext())
+            org.append(structs.Heading(title.strip(), 1, {}))
+        elif div.attrib.get("class") == "noteHeading":
+            heading = ("".join(div.itertext())).strip()
+            if heading.startswith("Highlight"):
+                loc = int(heading.split()[-1])
+                div = divs.pop(0)
+                text = "".join(div.itertext())
+                org.append(structs.QuoteBlock(f"{ text.strip() } (loc. { loc })"))
+
+    print(structs.dumps(org))
