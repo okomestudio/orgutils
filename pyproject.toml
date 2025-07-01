@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "orgutils"
-version = "25.03.0"
+version = "25.07.0"
 authors = [{name="Taro Sato", email="okomestudio@gmail.com"}]
 description = "orgutils for Python"
 readme = "README.rst"

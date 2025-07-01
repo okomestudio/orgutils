@@ -72,7 +72,9 @@ def export_to_org(dump: str, lang: str, **kwargs) -> None:
         item = sorted_items[idx]
 
         # Vocab
-        m = re.match(r"^(?:[vV]ocab|語彙|表現)\s*(|.*)$", item.data.get("note") or "")
+        m = re.match(
+            r"^(?:[vV](ocab)?|語彙|表現)\s*(|.*)$", item.data.get("note") or ""
+        )
         if m:
             org_vocab.append(
                 structs.Heading(
