@@ -1,4 +1,5 @@
 """Org structures."""
+
 from dataclasses import dataclass
 from typing import Iterable, List
 
@@ -19,7 +20,7 @@ class OrgFile(OrgObject):
 class Heading(OrgObject):
     title: str
     level: int
-    properties: dict
+    properties: dict = None
 
     def render(self) -> List[str]:
         lines = []

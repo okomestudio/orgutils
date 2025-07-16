@@ -151,23 +151,109 @@ def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
     with open(dump) as f:
         tree = html.parse(f)
 
+    def extract_text(el: etree.Element) -> str:
+        return ("".join(el.itertext())).strip()
+
+    base_heading_depth = 1
+
     divs: list[etree.Element] = tree.xpath(
-        "//div[@class='sectionHeading' or @class='noteHeading' or @class='noteText']"
+        "//div["
+        + " or ".join(
+            [
+                f"@class='{s}'"
+                for s in [
+                    "authors",
+                    "bookTitle",
+                    "citation",
+                    "noteHeading",
+                    "noteText",
+                    "sectionHeading",
+                ]
+            ]
+        )
+        + "]"
     )
 
     org: list[structs.OrgObject] = []
 
+    book_title = ""
+    book_authors = ""
+    citation = ""
+
     while divs:
         div = divs.pop(0)
-        if div.attrib.get("class") == "sectionHeading":
-            title = "".join(div.itertext())
-            org.append(structs.Heading(title.strip(), 1, {}))
-        elif div.attrib.get("class") == "noteHeading":
-            heading = ("".join(div.itertext())).strip()
-            if heading.startswith("Highlight"):
-                loc = int(heading.split()[-1])
+
+        if div.attrib.get("class") == "bookTitle":
+            book_title = extract_text(div)
+        elif div.attrib.get("class") == "authors":
+            book_authors = extract_text(div)
+        elif div.attrib.get("class") == "citation":
+            citation = extract_text(div)
+
+        elif div.attrib.get("class") == "sectionHeading":
+            section = extract_text(div)
+            if (
+                len(divs) > 3
+                and divs[0].attrib.get("class") == "noteHeading"
+                and extract_text(divs[0]).startswith("Note")
+                and divs[1].attrib.get("class") == "noteText"
+                and re.match(r"^[hH](\d+)(|\s+(.*))$", extract_text(divs[1]))
+                and divs[2].attrib.get("class") == "noteHeading"
+                and extract_text(divs[2]).startswith("Highlight")
+                and divs[3].attrib.get("class") == "noteText"
+                # and re.match(r"^[hH](\d+)(|\s+(.*))$", extract_text(divs[1]))
+            ):
+                divs.pop(0)
                 div = divs.pop(0)
-                text = "".join(div.itertext())
-                org.append(structs.QuoteBlock(f"{ text.strip() } (loc. { loc })"))
+                code = extract_text(div)
+
+                divs.pop(0)
+                div = divs.pop(0)
+                section_heading = extract_text(div)
+
+                m = re.match(r"^[hH](\d+)(|\s+(.*))$", code)
+                if m:
+                    heading_depth = int(m.group(1)) + base_heading_depth
+                    org.append(structs.Heading(section_heading, heading_depth))
+                else:
+                    # org.append(structs.QuoteBlock(f"{ text } ({ loc })"))
+                    raise ValueError("Error: section heading parsing")
+            # else:
+            #     org.append(structs.Heading(section, 1, {}))
+
+        elif div.attrib.get("class") == "noteHeading":
+            heading = extract_text(div)
+            if heading.startswith("Highlight"):
+                heading, loc = heading.split(" - ")
+                heading, loc = heading.strip(), loc.strip()
+
+                div = divs.pop(0)
+                if div.attrib.get("class") == "noteText":
+                    text = extract_text(div)
+
+                    # See if the next heading-text pair is markup
+                    if (
+                        len(divs) > 1
+                        and divs[0].attrib.get("class") == "noteHeading"
+                        and extract_text(divs[0]).startswith("Note")
+                        and divs[1].attrib.get("class") == "noteText"
+                        and re.match(r"^[hH](\d+)(|\s+(.*))$", extract_text(divs[1]))
+                    ):
+                        divs.pop(0)
+                        div = divs.pop(0)
+                        t = extract_text(div)
+                        m = re.match(r"^[hH](\d+)(|\s+(.*))$", t)
+                        if m:
+                            heading_depth = int(m.group(1)) + base_heading_depth
+                            org.append(structs.Heading(text, heading_depth, {}))
+                        else:
+                            org.append(structs.QuoteBlock(f"{ text } ({ loc })"))
+                    else:
+                        org.append(structs.QuoteBlock(f"{ text } ({ loc })"))
+
+    org = [structs.Heading(book_title, 1, {"AUTHORS": book_authors})] + org
+    if citation:
+        org.append(structs.Heading("Citation", 1))
+        org.append(structs.Paragraph(citation))
 
     print(structs.dumps(org))
