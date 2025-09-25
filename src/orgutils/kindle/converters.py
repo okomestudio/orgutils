@@ -6,11 +6,12 @@ Cloud Reader.
 
 import json
 import re
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 
 from lxml import etree, html
 
 from .. import utils
+from ..epub.parsers import parse_ebook_structure
 from ..org import structs
 
 KindleHighlight = namedtuple("KindleHighlight", ("location", "data"))
@@ -146,15 +147,25 @@ def export_to_org(dump: str, lang: str, **kwargs) -> None:
     print(structs.dumps(org_vocab))
 
 
-def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
+def convert_html_to_org(dump: str, lang: str, epub: str = None, **kwargs) -> None:
     """Take HTML export file and convert to Org."""
+    base_heading_depth = 1
+
+    book_parts = defaultdict(list)
+    for page, items in (parse_ebook_structure(epub) if epub else {}).items():
+        _ = book_parts[page]
+        for tag, text in items:
+            if tag.startswith(("h", "H")):
+                heading_depth = int(tag[1:]) + base_heading_depth
+                book_parts[page].append(
+                    structs.Heading(text, heading_depth, {"page": page})
+                )
+
     with open(dump) as f:
         tree = html.parse(f)
 
     def extract_text(el: etree.Element) -> str:
         return ("".join(el.itertext())).strip()
-
-    base_heading_depth = 1
 
     divs: list[etree.Element] = tree.xpath(
         "//div["
@@ -173,8 +184,6 @@ def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
         )
         + "]"
     )
-
-    org: list[structs.OrgObject] = []
 
     book_title = ""
     book_authors = ""
@@ -226,6 +235,7 @@ def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
             if heading.startswith("Highlight"):
                 heading, loc = heading.split(" - ")
                 heading, loc = heading.strip(), loc.strip()
+                page = loc.split()[-1] if loc.startswith("Page ") else None
 
                 div = divs.pop(0)
                 if div.attrib.get("class") == "noteText":
@@ -249,7 +259,11 @@ def convert_html_to_org(dump: str, lang: str, **kwargs) -> None:
                         else:
                             org.append(structs.QuoteBlock(f"{ text } ({ loc })"))
                     else:
-                        org.append(structs.QuoteBlock(f"{ text } ({ loc })"))
+                        book_parts[page].append(
+                            structs.QuoteBlock(f"{ text } ({ loc })")
+                        )
+
+    org: list[structs.OrgObject] = [v for _, vs in book_parts.items() for v in vs]
 
     org = [structs.Heading(book_title, 1, {"AUTHORS": book_authors})] + org
     if citation:

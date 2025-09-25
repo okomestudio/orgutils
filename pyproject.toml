@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "orgutils"
-version = "25.07.0"
+version = "25.09.0"
 authors = [{name="Taro Sato", email="okomestudio@gmail.com"}]
 description = "orgutils for Python"
 readme = "README.rst"
@@ -25,6 +25,7 @@ dependencies = [
     "panflute==2.3.1",
     "pdfminer.six==20240706",
     "pypandoc==1.14",
+    "ebooklib==0.19",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +49,7 @@ test = [
 "Buck Tracker" = "https://github.com/okomestudio/orgutils/issues"
 
 [project.scripts]
+org-from-epub = "orgutils.epub.__main__:cli"
 org-from-kindle = "orgutils.kindle.__main__:cli"
 org-from-snipd = "orgutils.snipd.__main__:cli"
 org-from-zotero = "orgutils.zotero.__main__:cli"

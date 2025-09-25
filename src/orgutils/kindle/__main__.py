@@ -19,6 +19,7 @@ def cli() -> None:
         help="Export file format (default: json)",
     )
     p.add_argument("--lang", "-l", choices=("en", "ja"), default="en", help="Language")
+    p.add_argument("--epub", "-e", type=str, help=".epub file")
 
     args = p.parse_args()
 
